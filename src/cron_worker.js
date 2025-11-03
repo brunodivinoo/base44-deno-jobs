@@ -337,7 +337,7 @@ async function processOnePDFJob(supabase, job) {
   }
 
   const disciplina_id = job.config.disciplinas_selecionadas?.[0] || null;
-  const topico_id = job.config.topicos_selecionados?.[0] || null;
+  const topicos_selecionados = job.config.topicos_selecionados || [];
   const ano = job.config.ano || null;
   const banca = job.config.banca || 'Não especificada';
   const totalQuestions = job.config.total_questoes || 10;
@@ -346,6 +346,10 @@ async function processOnePDFJob(supabase, job) {
   const questionIds = [];
 
   for (let i = 0; i < totalQuestions; i++) {
+    // Alternar entre os tópicos selecionados por questão (PDF)
+    const topico_id = topicos_selecionados.length > 0
+      ? topicos_selecionados[i % topicos_selecionados.length]
+      : null;
     try {
       console.log(`   [${i + 1}/${totalQuestions}] Gerando questão do PDF...`);
 
