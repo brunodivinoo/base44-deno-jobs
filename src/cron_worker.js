@@ -514,4 +514,4 @@ Deno.serve(async (req) => {
       error: error.message
     }, { status: 500 });
   }
-}
+});
