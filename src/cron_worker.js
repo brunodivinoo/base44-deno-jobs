@@ -365,6 +365,16 @@ async function processOnePDFJob(supabase, job) {
     const topico_id = topicos_selecionados.length > 0
       ? topicos_selecionados[i % topicos_selecionados.length]
       : null;
+    // Obter o nome do tópico para tags e contexto desta questão
+    let topicoNome = 'Geral';
+    if (topico_id) {
+      const { data: top } = await supabase
+        .from('contexto_topicos')
+        .select('nome')
+        .eq('id', topico_id)
+        .single();
+      if (top) topicoNome = top.nome;
+    }
     try {
       console.log(`   [${i + 1}/${totalQuestions}] Gerando questão do PDF...`);
 
@@ -382,6 +392,7 @@ CONFIGURAÇÃO DA QUESTÃO:
 - Banca: ${banca}
 - Ano: ${ano || '2025'}
 - Dificuldade: ${job.config.dificuldade || 'medio'}
+- Tópico: ${topicoNome}
 
 ${job.config.instrucoes_extras ? `
 ⚠️ REQUISITOS OBRIGATÓRIOS:
@@ -471,7 +482,8 @@ IMPORTANTE: Retorne APENAS o JSON, sem texto adicional.`;
           dificuldade: questao.dificuldade_estimada || 3,
           origem: 'ia_pdf',
           fonte: `PDF: ${pdf.file_name}`,
-          publica: false
+          publica: false,
+          tags: [topicoNome, banca, pdf.file_name].filter(Boolean)
         })
         .select()
         .single();
