@@ -77,13 +77,12 @@ async function processOneRegularJob(supabase, job) {
     .eq('id', job.id);
 
   const disciplina_id = job.config.disciplinas_selecionadas?.[0] || null;
-  const topico_id = job.config.topicos_selecionados?.[0] || null;
+  const topicos_selecionados = job.config.topicos_selecionados || [];
   const ano = job.config.ano || null;
   const banca = job.config.banca || 'Não especificada';
   const totalQuestions = job.config.quantidade || 10;
 
   let disciplinaNome = 'Geral';
-  let topicoNome = 'Geral';
   
   if (disciplina_id) {
     const { data: disc } = await supabase
@@ -94,18 +93,26 @@ async function processOneRegularJob(supabase, job) {
     if (disc) disciplinaNome = disc.nome;
   }
 
-  if (topico_id) {
-    const { data: top } = await supabase
-      .from('contexto_topicos')
-      .select('nome')
-      .eq('id', topico_id)
-      .single();
-    if (top) topicoNome = top.nome;
-  }
+  // Removido: busca de nome de tópico fora do loop. Agora será feita por questão dentro do loop.
 
   const questionIds = [];
 
   for (let i = 0; i < totalQuestions; i++) {
+    // Alternar entre os tópicos selecionados por questão
+    const topico_id = topicos_selecionados.length > 0
+      ? topicos_selecionados[i % topicos_selecionados.length]
+      : null;
+
+    // Obter o nome do tópico para tags e contexto desta questão
+    let topicoNome = 'Geral';
+    if (topico_id) {
+      const { data: top } = await supabase
+        .from('contexto_topicos')
+        .select('nome')
+        .eq('id', topico_id)
+        .single();
+      if (top) topicoNome = top.nome;
+    }
     try {
       console.log(`   [${i + 1}/${totalQuestions}] Gerando questão...`);
 
