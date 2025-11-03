@@ -341,7 +341,22 @@ async function processOnePDFJob(supabase, job) {
   const ano = job.config.ano || null;
   const banca = job.config.banca || 'Não especificada';
   const totalQuestions = job.config.total_questoes || 10;
-  const conteudoPDF = pdf.extracted_data.substring(0, 8000);
+  // Priorizar markdown_content (texto completo) ou usar resumo como fallback
+  let conteudoPDF = '';
+
+  if (pdf.markdown_content && pdf.markdown_content.length > 0) {
+    // Usar texto completo em markdown (limitado a 12000 caracteres para não estourar token limit)
+    conteudoPDF = pdf.markdown_content.substring(0, 12000);
+    console.log(`📄 Usando markdown completo do PDF (${conteudoPDF.length} caracteres)`);
+  } else if (pdf.extracted_data?.resumo_documento) {
+    // Fallback para resumo se markdown não estiver disponível
+    conteudoPDF = pdf.extracted_data.resumo_documento.substring(0, 8000);
+    console.log(`📄 Usando resumo do PDF (${conteudoPDF.length} caracteres) - ATENÇÃO: Considere processar o PDF com PDFREST`);
+  } else {
+    // Último fallback: usar JSON do extracted_data
+    conteudoPDF = JSON.stringify(pdf.extracted_data, null, 2).substring(0, 8000);
+    console.log(`⚠️ Usando JSON do extracted_data (${conteudoPDF.length} caracteres) - Qualidade reduzida`);
+  }
 
   const questionIds = [];
 
@@ -353,12 +368,16 @@ async function processOnePDFJob(supabase, job) {
     try {
       console.log(`   [${i + 1}/${totalQuestions}] Gerando questão do PDF...`);
 
-      const prompt = `Com base no conteúdo do PDF abaixo, gere 1 questão de concurso público.
+      const prompt = `Você é um especialista em criar questões de concursos públicos de alta qualidade.
+
+TAREFA: Analise o conteúdo do PDF abaixo e gere 1 questão específica e detalhada.
 
 CONTEÚDO DO PDF "${pdf.file_name}":
+---
 ${conteudoPDF}
+---
 
-CONFIGURAÇÃO:
+CONFIGURAÇÃO DA QUESTÃO:
 - Modalidade: ${job.config.modalidade || 'multipla_escolha'}
 - Banca: ${banca}
 - Ano: ${ano || '2025'}
@@ -367,12 +386,22 @@ CONFIGURAÇÃO:
 ${job.config.instrucoes_extras ? `
 ⚠️ REQUISITOS OBRIGATÓRIOS:
 ${job.config.instrucoes_extras}
+
+VOCÊ DEVE SEGUIR RIGOROSAMENTE ESSAS INSTRUÇÕES!
 ` : ''}
 
-Retorne APENAS JSON válido:
+INSTRUÇÕES IMPORTANTES:
+1. A questão DEVE ser específica sobre o conteúdo do PDF fornecido
+2. Use conceitos, exemplos e detalhes que aparecem no texto
+3. NÃO crie questões genéricas - aproveite o conteúdo específico do material
+4. Se o PDF contém súmulas, cite números específicos
+5. Se o PDF contém legislação, cite artigos específicos
+6. Mantenha a qualidade técnica e precisão jurídica
+
+FORMATO DE RESPOSTA (JSON):
 {
   "questoes": [{
-    "enunciado": "Texto da questão",
+    "enunciado": "Texto da questão detalhada e específica baseada no conteúdo do PDF",
     "alternativas": [
       {"letra": "A", "texto": "...", "correta": false},
       {"letra": "B", "texto": "...", "correta": true},
@@ -380,10 +409,12 @@ Retorne APENAS JSON válido:
       {"letra": "D", "texto": "...", "correta": false},
       {"letra": "E", "texto": "...", "correta": false}
     ],
-    "explicacao": "Explicação detalhada",
+    "explicacao": "Explicação detalhada referenciando o conteúdo específico do PDF",
     "dificuldade_estimada": 3
   }]
-}`;
+}
+
+IMPORTANTE: Retorne APENAS o JSON, sem texto adicional.`;
 
       const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
