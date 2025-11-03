@@ -1,11 +1,3 @@
-Preciso atualizar o arquivo src/cron_worker.js com correções importantes para o mapeamento correto de disciplina_id, topico_id, ano e instruções extras.
-
-LOCALIZAÇÃO: C:\Users\PC\OneDrive\Documentos\base44-deno-jobs\src\cron_worker.js
-
-AÇÃO: Substituir TODO o conteúdo do arquivo src/cron_worker.js pelo código abaixo:
-
-CÓDIGO:
-
 import { createClient } from 'npm:@supabase/supabase-js@2.39.0';
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -522,16 +514,4 @@ Deno.serve(async (req) => {
       error: error.message
     }, { status: 500 });
   }
-});
-
-
-FIM DO CÓDIGO.
-
-Após substituir o arquivo, execute os seguintes comandos Git:
-
-cd C:\Users\PC\OneDrive\Documentos\base44-deno-jobs
-git add src/cron_worker.js
-git commit -m "Corrige mapeamento de disciplina_id, topico_id, ano e instrucoes_extras"
-git push origin main
-
-Me avise quando terminar para eu confirmar o deploy no Railway.
+}
